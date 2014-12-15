@@ -61,5 +61,6 @@
 	<classpathentry kind="lib" path="/opt/hadoop-2.5.1/share/playground/RandomizedSVD/lib/slf4j-api-1.7.5.jar"/>
 	<classpathentry kind="lib" path="/opt/hadoop-2.5.1/share/playground/RandomizedSVD/lib/slf4j-log4j12-1.7.5.jar"/>
 	<classpathentry kind="lib" path="/opt/hadoop-2.5.1/share/playground/RandomizedSVD/lib/spark-assembly-1.1.1-hadoop2.4.0.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

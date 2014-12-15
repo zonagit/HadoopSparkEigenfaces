@@ -1,0 +1,203 @@
+There are 2 relevant packages in this project:
+
+test
+eigenfaces
+
+a) In package test there is just one class TestSVD.
+It starts by generating an nxm=100x2000 matrix
+with a certain percentage of non zero values.
+This percentage is 5% of the entries by default 
+but it can be changed through a command line arg.
+
+It then computes the SVD of this matrix using:
+a) Mahout Stochastic SVD solver (Hadoop based)
+b) Mahout sequential Stochastic SVD solver.
+c) Spark MLib implementation of Stochastic SVD.
+
+A comparison of the singular values of a) and c) is made 
+against the singular values computed by b) and if they 
+are not all within 10E-12 precision a message is printed out.
+
+To run TestSVD from eclipse create a run/debug
+configuration then enter arguments for command line.
+
+or use the jar (to create a jar file from this project do from within 
+Eclipse
+
+Right Click the project->Export Java Jar file->Enter location
+and name of jar)
+
+To run it from the jar run it from a local machine (rather
+than using hdfs) since the code uses Mahout and Spark jars
+and those are not pointed to hadoop's distribution.
+This is ok because the matrix is fairly small.
+
+So run it with 
+
+java -cp RandomizedSVD.jar:lib/*:. test.TestSVD 15 some_local_folder
+
+The first argument is the percent of non zero entries in the 
+randomly generated matrix and the second argument is some location
+where the matrix, and the output of the mahout svd is written
+to.
+
+The code will output the top 100 singular values produced
+by each of the 3 methods.
+
+
+a.1) ConversionMain.java
+
+This converts a file from binary to Hadoop SequenceFile or the other way
+The command line arguments are
+
+tobinary input_filename output_filename debug path
+
+so to convert a given input_filename from binary to SequenceFile do
+
+false input_filename output_filename false path_where_to_put_output_filename
+
+to convert a given input_filename from SequenceFile to binary do
+
+true input_filename output_filename false path_where_to_put_output_filename
+
+if the path (last argument) is omitted the input and output files will be
+read/written to a folder specified in the constant INPUT_PATH_FOLDER defined
+at the top of ConversionMain.java
+  
+Note that the binary format consists of a first line with numrows numcols
+then each line after that is one entry of the matrix in the order 
+0 0
+0 1
+...
+0 numcols-1
+1 0
+1 1
+...
+1 numcols-1
+...
+ 
+a.2) The arguments for OnePassMatrixMultiplyMain.java
+are the dimensions
+of the 2 matrices M (IxK) and N (KxJ), the number of groups and whether 
+debugging should be enabled or not (if debug is on it will print out 
+information along the different stages of the map reduce 
+pipeline, including at the end if the map reduce matrix multiplication matches
+regular matrix multiplication)
+ 
+The number of groups should be a multiple of the size of both
+matrices. So for 6x4x2 matrices use 2 groups, for
+100x 100x1000 matrices use 5,10,20,25,50,100 (100 means that each row in 
+the first matrix is in its own group and there are 100 groups of 10 columns each
+in the second matrix).
+  
+ For 50x50x50 matrices (square matrices) note that choosing a grouping of
+ 1 means all rows/columns are in one group.
+
+So the arguments for 2 groups would be
+
+6 6 6 2 false optional_input_path optional_output_path
+
+If not using grouping use 0 or -1 for the group argument
+So enter say for the product of a 2x3 times by 3x2 matrix with 
+no grouping
+
+2 3 2 -1 false optional_input_path optional_output_path
+
+a.2) No grouping was implemented for the 2 pass algorithm so the
+arguments for TwoPassMatrixMultiplyMain.java are just the dimensions
+of the 2 matrices
+
+2 3 2 false optional_input_path optional_temp_path optional_output_path
+
+for the product of a matrix 2x3 by a matrix 3x2
+
+In both the one pass and the 2 pass algorithms the matrices are dense
+i.e. none of their entries is zero. Also in both cases those matrices are
+written to 2 different files called M and N in the input folder which are 
+read by the mapper/first mapper.
+
+b) In the package pagerank there are two mains IdsToLabelsMain.java and
+ PageRankMain.java.
+ 
+b.1) IdsToLabelsMain.java accepts as arguments
+
+basenamelocation nodeid1 nodeid2 ... nodeidn
+
+and then reads basename.fcl and outputs the labels for the requested nodeids
+
+Here it is how I ran it from the command line (the fastutil, dsiutils and jsap jars
+should be at the same location as this jar MapReduceAndHadoop.jar and
+webbase-2001.fcl should be at the same location as well; all these jars are under the lib
+folder of the git commit)
+
+/mnt/scratch/u0082100/pagerank$ java -classpath "fastutil-6.5.15.jar:dsiutils-2.2.2.jar:jsap-2.1.jar:MapReduceAndHadoop.jar" pagerank.IdsToLabelsMain webbase-2001 93799279 38758143 69428479 112916492 111078997 4224907 30031331 20898292 112074159 30033865
+
+b.2) PageRankMain.java
+
+Run it with 3 arguments: the folder and basename containing the 
+.properties and .graph files for that basename; the output folder and
+the sort folder.
+
+The output folder contains subfolders one for each iteration in pagerank.
+The sort folder reads the last such subfolder, sorts by page rank
+and outputs the result (in increasing page rank so the last line of the
+file corresponds to the largest page rank node) to the sort folder.
+
+For example to run page rank on the enron dataset from the jar I ran
+(from /mnt/scratch/u0082100/)
+
+/usr/local/hadoop-2.5.0/bin/hadoop jar MapReduceAndHadoop.jar  pagerank.PageRankMain pagerank/enron /user/u0082100/output /user/u0082100/sort
+
+To find the top 30 page ranks I then ran
+
+/usr/local/hadoop-2.5.0/bin/hdfs dfs -cat /user/u0082100/sort/part* |  tail  -n 30
+
+b.3) Trust rank: Run PageRankMain.java with 4 arguments. The first 3 
+arguments are similar to b.2) above: the location of the .properties,.graph files,
+the output and sort dirs (use different output and sort dirs for
+trust rank). The 4th argument is the path to a file 
+containing the top N page ranks (as produced by b.2 above
+namely the tail command). These will
+form the trusted set.
+
+I have one of these files under the folder webgraphdata, called enronTop300 
+To build it I ran
+
+/usr/local/hadoop-2.5.0/bin/hdfs dfs -cat /user/u0082100/sort/part* |  tail  -n 300
+
+b.4) Spam mass: Run SpamMassMain.java with 3 arguments
+
+1: the location of the last iteration of pagerank 
+2: the location of the last iteration of trustpagerank
+3: the location of the output of spam mass calculation
+Some examples of command line cmds  I ran in the apt cluster
+
+One pass
+-----------
+/usr/local/hadoop-2.5.0/bin/hadoop jar /home/u0082100/matrixmultiply.jar matrixmultiply.OnePassMatrixMultiplyMain 100 1000 1000 10 false /user/u0082100/input/ /user/u0082100/output/
+
+Two Pass
+---------
+/usr/local/hadoop-2.5.0/bin/hadoop jar /home/u0082100/matrixmultiply.jar matrixmultiply.TwoPassMatrixMultiplyMain 100 100 1000 false /user/u0082100/input/ /user/u0082100/output/ /user/u0082100/temp
+
+Kill a job
+-----------
+/usr/local/hadoop-2.5.0/bin/hadoop job -kill job_1412285424336_1065
+
+
+Page Rank with taxation (running from /mnt/scratch/u0082100/)
+-----------------------
+/usr/local/hadoop-2.5.0/bin/hadoop jar MapReduceAndHadoop.jar  pagerank.PageRankMain pagerank/enron /user/u0082100/output /user/u0082100/sort
+
+/usr/local/hadoop-2.5.0/bin/hadoop jar MapReduceAndHadoop.jar  pagerank.PageRankMain pagerank/dblp-2011-hc /user/u0082100/output /user/u0082100/sort
+
+/usr/local/hadoop-2.5.0/bin/hadoop jar MapReduceAndHadoop.jar  pagerank.PageRankMain pagerank/hollywood-2011-hc /user/u0082100/output /user/u0082100/sort
+
+/usr/local/hadoop-2.5.0/bin/hadoop jar MapReduceAndHadoop.jar  pagerank.PageRankMain pagerank/webbase-2001-hc /user/u0082100/output /user/u0082100/sort
+
+Retrieve the top 30 pageranks
+------------------------------
+/usr/local/hadoop-2.5.0/bin/hdfs dfs -cat /user/u0082100/sort/part* |  tail  -n 30
+
+Finally there is a jar file called MapReduceAndHadoop.jar that can be run
+as described above.

@@ -43,8 +43,17 @@ public class TestSVD
 		int q = 1;
 		
 		double percent = 5;
-		if (args[0]!= null)
-			percent = Double.parseDouble(args[0]);
+		if (args != null)
+		{			
+			if (args.length>0)
+			{
+				percent = Double.parseDouble(args[0]);
+			}
+			if (args.length>1)
+			{
+				TMP_DIR_PATH = args[1];
+			}
+		}
 		Configuration conf = new Configuration();
 		conf.set("mapred.job.tracker", "local");
 		conf.set("fs.default.name", "file:///");
@@ -65,6 +74,7 @@ public class TestSVD
 		double muAmplitude = 50.0;
 		VectorWritable vw = new VectorWritable();
 		IntWritable roww = new IntWritable();
+		//write matrix to file A.seq
 		for (int i = 0; i < m; i++)
 		{
 			//vector that only stores non zero doubles as a pair of 
