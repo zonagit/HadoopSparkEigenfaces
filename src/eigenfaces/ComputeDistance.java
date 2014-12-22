@@ -28,7 +28,7 @@ public class ComputeDistance
 
 	public static void main(String args[]) throws Exception 
 	{
-		if (args.length != 8) 
+		if (args.length != 9) 
 		{
 			System.out.println("Arguments: eigenFacesFileName meanImageFileName weightSeqFilename width height trainingDirectory testImageDirectory outputDirectory");
 			System.exit(1);
@@ -41,6 +41,7 @@ public class ComputeDistance
 		String trainImageDirectory = args[5];
 		String testImageDirectory = args[6];
 		String outputDirectory = args[7];
+		String imageDirectory = args[8];
 		double[] meanPixels = Helper.readImagePixels(meanImageFilename, width, height);
 		double[][] eigenFaces = Helper.readMatrixSequenceFile(eigenFacesFilename);
 		double[][] weightMatrix = Helper.readMatrixSequenceFile(weightSeqFileName);
@@ -57,7 +58,7 @@ public class ComputeDistance
 			double distance = Helper.computeImageDistance(imagePixels, reconstructedImagePixels);
 			String shortTestFileName = Helper.getShortFileName(testImageFileName);
 			System.out.printf("Reconstructed Image distance for %1$s: %2$f\n", shortTestFileName, distance);
-			Helper.writeImage(outputDirectory + "/test-ef-" + shortTestFileName, reconstructedImagePixels, width, height);
+			Helper.writeImage(imageDirectory + "/test-ef-" + shortTestFileName, reconstructedImagePixels, width, height);
 			Object[] closestImageInfo = findClosestImage(weights, weightMatrix);
 			int closestImageIndex = (Integer)closestImageInfo[0];
 			double closestImageSimilarity = (Double)closestImageInfo[1];

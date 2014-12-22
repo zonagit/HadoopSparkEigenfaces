@@ -4,6 +4,10 @@ import java.io.File;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+
 public class GenerateCovarianceMatrix 
 {
 	private static double[][] convertImagesToMatrix(
@@ -108,14 +112,21 @@ public class GenerateCovarianceMatrix
 		{
 			outputDirectoryFile.mkdir();
 		}
+		
 		List<String> imageFileNames = Helper.listImageFileNames(imageDirectory);
 		System.out.println("Reading " + imageFileNames.size() + " images...");
 		double[][] pixelMatrix = convertImagesToMatrix(imageFileNames, width, height);
 		double[] meanColumn = computeMeanColumn(pixelMatrix);
-		Helper.writeImage(outputDirectory + "/mean-image.gif", meanColumn, width, height);
+		System.out.println("Writing mean image to " + imageDirectory + "/mean-image.gif");
+		Helper.writeImage(imageDirectory + "/mean-image.gif", meanColumn, width, height);
+		Configuration conf = new Configuration();
+		FileSystem fs = FileSystem.get(new Path(imageDirectory+"/mean-image.gif").toUri(),conf);
+		fs.copyFromLocalFile(new Path(imageDirectory + "/mean-image.gif"), new Path(outputDirectory + "/mean-image.gif"));
 		double[][] diffMatrixPixels = Helper.computeDifferenceMatrixPixels(pixelMatrix, meanColumn);
+		System.out.println("Writing difference matrix to " + outputDirectory + "/diffmatrix.seq");
 		Helper.writeMatrixSequenceFile(outputDirectory + "/diffmatrix.seq", diffMatrixPixels);
 		double[][] covarianceMatrix = computeCovarianceMatrix(diffMatrixPixels);
+		System.out.println("Writing covariance matrix to " + outputDirectory + "/covariance.seq");
 		Helper.writeMatrixSequenceFile(outputDirectory + "/covariance.seq", covarianceMatrix);
 	}
 }

@@ -35,7 +35,7 @@ public class TestSVD
 	private static final double s_epsilon = 1.0E-10d;
 	public static Random rnd = RandomUtils.getRandom();
 	public static String TMP_DIR_PATH = "/opt/hadoop-2.5.1/share/svdtmp/";
-	
+	public static String TMP_LOCAL_DIR_PATH = TMP_DIR_PATH;
 	@Test
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws IOException
@@ -51,14 +51,19 @@ public class TestSVD
 			}
 			if (args.length>1)
 			{
-				TMP_DIR_PATH = args[1];
+				TMP_LOCAL_DIR_PATH = args[1];
+				TMP_DIR_PATH = TMP_LOCAL_DIR_PATH;
+			}
+			if (args.length>2)
+			{
+				TMP_DIR_PATH = args[2];
 			}
 		}
 		Configuration conf = new Configuration();
-		conf.set("mapred.job.tracker", "local");
-		conf.set("fs.default.name", "file:///");
+		//conf.set("mapred.job.tracker", "local");
+		//conf.set("fs.default.name", "file:///");
 
-		Path aLocPath = new Path(TMP_DIR_PATH, "A/A.seq");
+		Path aLocPath = new Path(TMP_LOCAL_DIR_PATH, "A/A.seq");
 		FileSystem fs = FileSystem.get(aLocPath.toUri(), conf);
 		fs.delete(aLocPath,true);
 		SequenceFile.Writer w = 

@@ -7,9 +7,7 @@ import java.util.LinkedList;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.mahout.math.hadoop.stochasticsvd.SSVDCli;
 import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.Matrix;
@@ -28,6 +26,23 @@ public class EigenFacesSparkMain
 {
 	public static void main(String args[]) throws Exception
 	{
+		int rank = 50;
+		if (args != null && args.length>0)
+		{
+			rank = Integer.parseInt(args[0]);
+		}
+		URL purl = EigenFacesMain.class.getProtectionDomain().getCodeSource().getLocation();
+		File file = new File(purl.toURI());
+		String input_location = file.getParentFile().toString();
+		if (args!= null && args.length>1)
+		{
+			input_location = args[1];
+		}
+		String output_location = input_location;
+		if (args!= null && args.length>2)
+		{
+			output_location = args[2];
+		}
 		//1. Train the model
 		//1.a Read all n images from the training dir
 		//1.b Convert each image to greyscale and scale it down
@@ -41,17 +56,15 @@ public class EigenFacesSparkMain
 		String args1[] = new String[4];
 		args1[0] = 80 + "";
 		args1[1] = 60 + "";
-		URL purl = EigenFacesMain.class.getProtectionDomain().getCodeSource().getLocation();
-		File file = new File(purl.toURI());
-		args1[2] = file.getParentFile() + "/training-set";//training set location
-		args1[3] = file.getParentFile() + "/output";//output dir
+		args1[2] = input_location + "/training-set";//training set location
+		args1[3] = output_location + "/output";//output dir
 		Configuration conf = new Configuration();
-		Path output = new Path(file.getParentFile().toString(),"output");
+		Path output = new Path(output_location,"output");
 		FileSystem fs = FileSystem.get(output.toUri(), conf);
 		fs.delete(output, true);
 		
 		GenerateCovarianceMatrix gcm = new GenerateCovarianceMatrix();
-		//gcm.main(args1);
+		gcm.main(args1);
 		Path covMatrix = new Path(file.getParentFile().toString(),"output/covariance.seq");
 		//2. Compute the eigenvectors of the covariance matrix
 		//using Spark SVD
@@ -70,69 +83,43 @@ public class EigenFacesSparkMain
 		RowMatrix mat = new RowMatrix(rows.rdd());
 		
 		//Compute the top singular values and corresponding singular vectors
-		SingularValueDecomposition<RowMatrix,Matrix> svd = mat.computeSVD(4, true, 1.0E-9d);
+		SingularValueDecomposition<RowMatrix,Matrix> svd = mat.computeSVD(rank, true, 1.0E-9d);
 		RowMatrix U = svd.U();
 		Vector s = svd.s();
 		Matrix V = svd.V();
-/*		Path tmp = new Path(file.getParentFile().toString() + "/temp" );
-		Path tmpCov = new Path(file.getParentFile().toString(),"temp/covariance.seq" );
-		fs = FileSystem.get(tmp.toUri(), conf);
-		fs.delete(tmp, true);
-		fs.copyFromLocalFile(covMatrix, tmpCov);
-		String[] args2 = {
-		        "--input", tmpCov.toString(),
-		        "--output", output.toString(),
-		        "--tempDir", tmp.toString(),
-		        "--numRows", "151",
-		        "--numCols", "151",
-		        "--rank", "50",
-		        "--symmetric", "false",
-		        "--cleansvd", "true"
-		};
-	//	ToolRunner.run(conf, new DistributedLanczosSolver().new DistributedLanczosSolverJob(), args2);
-		//ssvd
-		Path difMatrix = new Path(file.getParentFile().toString(),"output/diffmatrix.seq");
-		
-		Path tmpDif = new Path(file.getParentFile().toString(),"temp/diffmatrix.seq" );
-		fs.copyFromLocalFile(covMatrix, tmpDif);
-		String[] args22 = {
-		        "--input", tmpDif.toString(),
-		        "--output", output.toString(),
-		        "--tempDir", tmp.toString(),
-		        "--computeU", "true",
-		        "--computeV", "true",
-		        "--rank", "50",
-		        "--reduceTasks", "2",
-		        "--powerIter", "0"
-		};
-		SSVDCli ssvdcli = new SSVDCli();
-		ssvdcli.main(args22);
+		//Print singular values
+		System.out.println("Printing singular values");
+		for (int i=0;i<s.toArray().length;i++)
+		{
+			System.out.println(s.toArray()[i]);
+		}
 		//3. Compute the eingenfaces from the clean eigenvectors
 		ComputeEigenFaces cef = new ComputeEigenFaces();
 		String[] args3 = {
-				file.getParentFile() + "/output/V/v-m-00001",
-				file.getParentFile() + "/output/diffmatrix.seq",
-				file.getParentFile() + "/output/mean-image.gif",
+				output_location + "/output/V/v-m-00001",
+				output_location + "/output/diffmatrix.seq",
+				input_location + "/training-set/mean-image.gif",
 				80 + "",
 				60 + "",
-				file.getParentFile() + "/training-set",
-				file.getParentFile() + "/output"
+				input_location + "/training-set",
+				output_location + "/output",
+				input_location + "/images"
 		};
 		
-		cef.main(args3);
+		cef.main(args3,V);
 		//4. Now test the model
 		ComputeDistance cd = new ComputeDistance();
 		String[] args4 = {
-				file.getParentFile() + "/output/eigenfaces.seq",
-				file.getParentFile() + "/output/mean-image.gif",
-				file.getParentFile() + "/output/weights.seq",
+				output_location + "/output/eigenfaces.seq",
+				input_location + "/training-set/mean-image.gif",
+				output_location + "/output/weights.seq",
 				80 + "",
 				60 + "",
-				file.getParentFile() + "/training-set",
-				file.getParentFile() + "/testing-set",
-				file.getParentFile() + "/output"
+				input_location + "/training-set",
+				input_location + "/testing-set",
+				output_location + "/output",
+				input_location + "/images"
 		};
 		cd.main(args4);
-	*/	
 	}
 }

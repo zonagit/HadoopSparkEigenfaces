@@ -110,6 +110,7 @@ public class Helper
 		int columnCount = covarianceMatrix[0].length;
 		Configuration configuration = new Configuration();
 		FileSystem fs = FileSystem.get(configuration);
+//		System.out.println(matrixSeqFileName);
 		Writer matrixWriter = new SequenceFile.Writer(fs, configuration,
 				new Path(matrixSeqFileName),
 				IntWritable.class, VectorWritable.class);
@@ -207,6 +208,8 @@ public class Helper
 		List<String> imageFileNames = new ArrayList<String>();
 		for(File imageFile: directory.listFiles()) 
 		{
+			if (imageFile.getName().startsWith("mean-image.gif"))
+				continue;
 			// if (imageFile.getName().endsWith(".gif")) {
 			imageFileNames.add(imageFile.getAbsolutePath());
 			// }
