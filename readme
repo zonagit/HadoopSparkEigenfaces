@@ -102,3 +102,11 @@ a local directory and the third is a folder in the hdfs system
 
 This needs the spark-assembly-1.1.1-hadoop2.4.0.jar in order
 for spark to be able to run from within hadoop.
+
+The code assumes that there are 2 directories called 
+training-set and testing-set off the local path. So in the examples
+above they would be at
+
+/mnt/scratch/u0082100/RandomizedSVD/training-set
+
+/mnt/scratch/u0082100/RandomizedSVD/testing-set
